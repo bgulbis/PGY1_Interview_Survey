@@ -1,0 +1,49 @@
+---
+title: "Analysis of PGY1 Interviews for 2017-2018"
+author: "Brian Gulbis"
+date: '`r format(Sys.Date(), "%B %d, %Y")`'
+output: 
+  html_document:
+    code_folding: hide
+    fig_caption: yes
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, warning = FALSE)
+```
+
+```{r, message=FALSE}
+library(tidyverse)
+library(readxl)
+library(forcats)
+library(ggthemes)
+
+survey <- read_excel("../data/raw/2017_survey_responses.xlsx")
+ratings <- read_excel("../data/raw/2017_interview_interactions.xlsx")
+```
+
+```{r, fig.cap="Where Respondants Ranked Us"}
+survey %>%
+    filter(Question == 5) %>%
+    dmap_at("ShortAnswer", ~ factor(.x, levels = c("First Choice", "Second Choice", "Third Choice or Below", "Did Not Rank"), ordered = TRUE)) %>%
+    ggplot(aes(x = ShortAnswer)) +
+    geom_bar() +
+    xlab("") +
+    ylab("Number of Responses") +
+    theme_tufte() +
+    theme(axis.ticks.x = element_blank(), axis.ticks.y = element_line(color = "gray35"), axis.line = element_line(color = "light gray"), axis.title.y = element_text(color = "gray35"))
+```
+
+```{r, fig.width=8, fig.cap="How Respondants Rated Each Portion of Interview Day"}
+ratings %>%
+    dmap_at("Score", ~ factor(.x, levels = c("Excellent", "Above Average", "Average", "Below Average"), ordered = TRUE)) %>%
+    ggplot(aes(x = Score)) +
+    geom_bar() +
+    xlab("Rating") +
+    ylab("Number of Responses") +
+    facet_wrap(~ Attribute) +
+    coord_flip() +
+    theme_tufte() +
+    theme(axis.ticks.y = element_blank(), axis.ticks.x = element_line(color = "gray35"), axis.line = element_line(color = "light gray"), axis.title = element_text(color = "gray35"), strip.text = element_text(color = "gray35"))
+```
+
