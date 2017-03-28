@@ -2,7 +2,8 @@
 title: "Analysis of PGY1 Interviews for 2017-2018"
 author: "Brian Gulbis"
 date: '`r format(Sys.Date(), "%B %d, %Y")`'
-output: 
+output:
+  pdf_document: default
   html_document:
     code_folding: hide
     fig_caption: yes
@@ -12,27 +13,74 @@ output:
 knitr::opts_chunk$set(echo = FALSE, warning = FALSE)
 ```
 
-```{r, message=FALSE}
+```{r data, message=FALSE}
 library(tidyverse)
 library(readxl)
+library(stringr)
 library(forcats)
-library(ggthemes)
+library(pander)
+panderOptions('table.alignment.default', 'left')
+panderOptions('table.split.table', Inf)
 
-survey <- read_excel("../data/raw/2017_survey_responses.xlsx")
+survey <- read_excel("../data/raw/2017_survey_responses.xlsx") %>%
+    dmap_at("OriginalResponse", na_if, y = "NA")
 ratings <- read_excel("../data/raw/2017_interview_interactions.xlsx")
+
+mh_ranking <- survey %>%
+    filter(Question == 5) %>%
+    dmap_at("ShortAnswer", ~ factor(.x, levels = c("First Choice", "Second Choice", "Third Choice or Below", "Did Not Rank"), ordered = TRUE))
 ```
 
+```{r theme}
+theme_bg <- function(base_size = 11, base_family = "") {
+    theme_bw(base_family = base_family, base_size = base_size) +
+        theme(legend.background = element_blank(),
+              legend.key = element_blank(),
+              legend.text = element_text(color = "grey35"),
+              panel.background = element_blank(),
+              panel.border = element_blank(),
+              strip.background = element_blank(),
+              strip.text = element_text(color = "grey35"),
+              plot.background = element_blank(),
+              panel.grid = element_blank(),
+              axis.line = element_line(color = "grey85"),
+              axis.text = element_text(color = "grey35"),
+              axis.title = element_text(color = "grey35"),
+              axis.ticks = element_line(color = "grey35"))
+}
+```
+
+## Ranking
+
 ```{r, fig.cap="Where Respondants Ranked Us"}
-survey %>%
-    filter(Question == 5) %>%
-    dmap_at("ShortAnswer", ~ factor(.x, levels = c("First Choice", "Second Choice", "Third Choice or Below", "Did Not Rank"), ordered = TRUE)) %>%
-    ggplot(aes(x = ShortAnswer)) +
+ggplot(mh_ranking, aes(x = ShortAnswer)) +
     geom_bar() +
     xlab("") +
     ylab("Number of Responses") +
-    theme_tufte() +
-    theme(axis.ticks.x = element_blank(), axis.ticks.y = element_line(color = "gray35"), axis.line = element_line(color = "light gray"), axis.title.y = element_text(color = "gray35"))
+    theme_bg()
 ```
+
+#### Comments
+```{r, results='asis'}
+x <- survey %>%
+    filter(Question == 6, !is.na(OriginalResponse)) %>%
+    select(-ShortAnswer) %>%
+    left_join(mh_ranking[c("Responder", "ShortAnswer")], by = "Responder") %>%
+    mutate(Comments = str_c("(", ShortAnswer, ") ", OriginalResponse))
+    # dmap_at("ShortAnswer", ~ factor(.x, levels = c("First Choice", "Second Choice", "Third Choice or Below", "Did Not Rank"), ordered = TRUE)) %>%
+    # select(Rating = ShortAnswer, Comments = OriginalResponse) %>%
+    # arrange(Rating) %>%
+    # group_by(Rating) %>%
+    # by_slice(as.list, .to = "Comments") %>%
+    # pander(split.cells = c("15%", "85%"), caption = "Why candidates ranked us where they did")
+    # pandoc.table(caption = "Why candidates ranked us where they did")
+# x <- filter(survey, Question == 6, !is.na(OriginalResponse))
+y <- as.list(x$Comments)
+pander(y)
+
+```
+
+## Interview Day Ratings
 
 ```{r, fig.width=8, fig.cap="How Respondants Rated Each Portion of Interview Day"}
 ratings %>%
@@ -43,7 +91,59 @@ ratings %>%
     ylab("Number of Responses") +
     facet_wrap(~ Attribute) +
     coord_flip() +
-    theme_tufte() +
-    theme(axis.ticks.y = element_blank(), axis.ticks.x = element_line(color = "gray35"), axis.line = element_line(color = "light gray"), axis.title = element_text(color = "gray35"), strip.text = element_text(color = "gray35"))
+    theme_bg()
 ```
 
+```{r, eval=FALSE, fig.cap="Slope graph of ratings"}
+ratings %>%
+    dmap_at("Score", ~ factor(.x, levels = c("Excellent", "Above Average", "Average", "Below Average"), ordered = TRUE)) %>%
+    dmap_at("Responder", as.character) %>%
+    dmap_at("Responder", as_factor) %>%
+    ggplot(aes(x = as_factor(Attribute), y = Score, color = Responder)) +
+    geom_point() +
+    geom_line() +
+    xlab("Attribute") +
+    ylab("Rating") +
+    theme_bg()
+```
+
+## Factors in Ranking Decision
+
+#### Comments
+```{r}
+x <- survey %>%
+    filter(Question == 2, !is.na(OriginalResponse)) %>%
+    select(-ShortAnswer) %>%
+    left_join(mh_ranking[c("Responder", "ShortAnswer")], by = "Responder") %>%
+    mutate(Comments = str_c("(", ShortAnswer, ") ", OriginalResponse))
+y <- as.list(x$Comments)
+pander(y)
+    # knitr::kable(caption = "What factors influenced a candidates ranking decision")
+```
+
+## MMI Influence
+
+```{r}
+survey %>%
+    filter(Question == 4) %>%
+    ggplot(aes(x = ShortAnswer)) +
+    geom_bar() +
+    xlab("") +
+    ylab("Number of Respones") +
+    coord_flip() +
+    theme_bg()
+```
+
+
+## Suggestions
+
+```{r}
+x <- survey %>%
+    filter(Question == 7, !is.na(OriginalResponse)) %>%
+    select(-ShortAnswer) %>%
+    left_join(mh_ranking[c("Responder", "ShortAnswer")], by = "Responder") %>%
+    mutate(Comments = str_c("(", ShortAnswer, ") ", OriginalResponse))
+y <- as.list(x$Comments)
+pander(y)    
+# knitr::kable(caption = "Suggestions for improving the interview day")
+```
