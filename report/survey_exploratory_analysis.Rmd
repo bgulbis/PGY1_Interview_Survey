@@ -18,6 +18,7 @@ library(tidyverse)
 library(readxl)
 library(stringr)
 library(forcats)
+library(themebg)
 library(pander)
 panderOptions('table.alignment.default', 'left')
 panderOptions('table.split.table', Inf)
@@ -31,25 +32,6 @@ mh_ranking <- survey %>%
     dmap_at("ShortAnswer", ~ factor(.x, levels = c("First Choice", "Second Choice", "Third Choice or Below", "Did Not Rank"), ordered = TRUE))
 ```
 
-```{r theme}
-theme_bg <- function(base_size = 11, base_family = "") {
-    theme_bw(base_family = base_family, base_size = base_size) +
-        theme(legend.background = element_blank(),
-              legend.key = element_blank(),
-              legend.text = element_text(color = "grey35"),
-              panel.background = element_blank(),
-              panel.border = element_blank(),
-              strip.background = element_blank(),
-              strip.text = element_text(color = "grey35"),
-              plot.background = element_blank(),
-              panel.grid = element_blank(),
-              axis.line = element_line(color = "grey85"),
-              axis.text = element_text(color = "grey35"),
-              axis.title = element_text(color = "grey35"),
-              axis.ticks = element_line(color = "grey35"))
-}
-```
-
 ## How candidates ranked our program
 
 ```{r, fig.cap="Where Respondants Ranked Us"}
@@ -57,7 +39,7 @@ ggplot(mh_ranking, aes(x = ShortAnswer)) +
     geom_bar() +
     xlab("") +
     ylab("Number of Responses") +
-    theme_bg()
+    theme_bg(xticks = FALSE)
 ```
 
 ## Reasons why we were not first choice
@@ -89,7 +71,7 @@ ratings %>%
     ylab("Number of Responses") +
     facet_wrap(~ Attribute) +
     coord_flip() +
-    theme_bg()
+    theme_bg(yticks = FALSE)
 ```
 
 ```{r, eval=FALSE, fig.cap="Slope graph of ratings"}
@@ -125,7 +107,7 @@ pander(y)
 
 ## Did the MMI influence the way you ranked our residency program
 
-```{r}
+```{r, fig.height=2.5, fig.cap="How use of MMI's influenced ranking decisions"}
 survey %>%
     filter(Question == 4) %>%
     ggplot(aes(x = ShortAnswer)) +
@@ -133,21 +115,21 @@ survey %>%
     xlab("") +
     ylab("Number of Respones") +
     coord_flip() +
-    theme_bg()
+    theme_bg(yticks = FALSE)
 ```
 
 ## How candidates first learned of our program
 
-```{r}
+```{r, fig.height=2.5, fig.cap="How candidates learned of our program"}
 survey %>%
-    filter(Question == 1) %>%
+    filter(Question == 1, !is.na(ShortAnswer)) %>%
     dmap_at("ShortAnswer", fct_infreq) %>%
     ggplot(aes(x = ShortAnswer)) +
     geom_bar() +
     xlab("") +
     ylab("Number of Respones") +
     coord_flip() +
-    theme_bg()
+    theme_bg(yticks = FALSE)
 ```
 
 
