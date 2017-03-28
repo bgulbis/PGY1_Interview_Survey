@@ -23,7 +23,7 @@ panderOptions('table.alignment.default', 'left')
 panderOptions('table.split.table', Inf)
 
 survey <- read_excel("../data/raw/2017_survey_responses.xlsx") %>%
-    dmap_at("OriginalResponse", na_if, y = "NA")
+    dmap_at(c("OriginalResponse", "ShortAnswer"), na_if, y = "NA")
 ratings <- read_excel("../data/raw/2017_interview_interactions.xlsx")
 
 mh_ranking <- survey %>%
@@ -50,7 +50,7 @@ theme_bg <- function(base_size = 11, base_family = "") {
 }
 ```
 
-## Ranking
+## How candidates ranked our program
 
 ```{r, fig.cap="Where Respondants Ranked Us"}
 ggplot(mh_ranking, aes(x = ShortAnswer)) +
@@ -60,27 +60,25 @@ ggplot(mh_ranking, aes(x = ShortAnswer)) +
     theme_bg()
 ```
 
-#### Comments
+## Reasons why we were not first choice
+
 ```{r, results='asis'}
 x <- survey %>%
     filter(Question == 6, !is.na(OriginalResponse)) %>%
     select(-ShortAnswer) %>%
     left_join(mh_ranking[c("Responder", "ShortAnswer")], by = "Responder") %>%
-    mutate(Comments = str_c("(", ShortAnswer, ") ", OriginalResponse))
-    # dmap_at("ShortAnswer", ~ factor(.x, levels = c("First Choice", "Second Choice", "Third Choice or Below", "Did Not Rank"), ordered = TRUE)) %>%
-    # select(Rating = ShortAnswer, Comments = OriginalResponse) %>%
-    # arrange(Rating) %>%
-    # group_by(Rating) %>%
-    # by_slice(as.list, .to = "Comments") %>%
-    # pander(split.cells = c("15%", "85%"), caption = "Why candidates ranked us where they did")
-    # pandoc.table(caption = "Why candidates ranked us where they did")
-# x <- filter(survey, Question == 6, !is.na(OriginalResponse))
-y <- as.list(x$Comments)
-pander(y)
+    select(Rating = ShortAnswer, Comments = OriginalResponse) %>%
+    group_by(Rating) %>%
+    by_slice(map, as.list, .to = "Comments") 
 
+y <- flatten(x) %>%
+    flatten()
+y <- y[4:6]
+names(y) <- x$Rating
+pander(y)
 ```
 
-## Interview Day Ratings
+## Ratings for each component of your interview day
 
 ```{r, fig.width=8, fig.cap="How Respondants Rated Each Portion of Interview Day"}
 ratings %>%
@@ -107,21 +105,25 @@ ratings %>%
     theme_bg()
 ```
 
-## Factors in Ranking Decision
+## Most important factors when deciding what order to rank residency programs
 
-#### Comments
-```{r}
+```{r, results='asis'}
 x <- survey %>%
     filter(Question == 2, !is.na(OriginalResponse)) %>%
     select(-ShortAnswer) %>%
     left_join(mh_ranking[c("Responder", "ShortAnswer")], by = "Responder") %>%
-    mutate(Comments = str_c("(", ShortAnswer, ") ", OriginalResponse))
-y <- as.list(x$Comments)
+    select(Rating = ShortAnswer, Comments = OriginalResponse) %>%
+    group_by(Rating) %>%
+    by_slice(map, as.list, .to = "Comments") 
+
+y <- flatten(x) %>%
+    flatten()
+y <- y[5:8]
+names(y) <- x$Rating
 pander(y)
-    # knitr::kable(caption = "What factors influenced a candidates ranking decision")
 ```
 
-## MMI Influence
+## Did the MMI influence the way you ranked our residency program
 
 ```{r}
 survey %>%
@@ -134,16 +136,36 @@ survey %>%
     theme_bg()
 ```
 
+## How candidates first learned of our program
 
-## Suggestions
+```{r}
+survey %>%
+    filter(Question == 1) %>%
+    dmap_at("ShortAnswer", fct_infreq) %>%
+    ggplot(aes(x = ShortAnswer)) +
+    geom_bar() +
+    xlab("") +
+    ylab("Number of Respones") +
+    coord_flip() +
+    theme_bg()
+```
+
+
+## Provide any suggestions to improve the interview process
 
 ```{r}
 x <- survey %>%
     filter(Question == 7, !is.na(OriginalResponse)) %>%
     select(-ShortAnswer) %>%
     left_join(mh_ranking[c("Responder", "ShortAnswer")], by = "Responder") %>%
-    mutate(Comments = str_c("(", ShortAnswer, ") ", OriginalResponse))
-y <- as.list(x$Comments)
-pander(y)    
+    select(Rating = ShortAnswer, Comments = OriginalResponse) %>%
+    group_by(Rating) %>%
+    by_slice(map, as.list, .to = "Comments") 
+
+y <- flatten(x) %>%
+    flatten()
+y <- y[5:8]
+names(y) <- x$Rating
+pander(y)
 # knitr::kable(caption = "Suggestions for improving the interview day")
 ```
