@@ -1,5 +1,6 @@
 ---
-title: "Analysis of PGY1 Interviews for 2017-2018"
+title: "PGY1 Interview Candidate Survey Results"
+subtitle: "Candidates interviewing for 2017-2018 residency class"
 author: "Brian Gulbis"
 date: '`r format(Sys.Date(), "%B %d, %Y")`'
 output:
@@ -15,6 +16,7 @@ knitr::opts_chunk$set(echo = FALSE, warning = FALSE)
 
 ```{r data, message=FALSE}
 library(tidyverse)
+library(purrrlyr)
 library(readxl)
 library(stringr)
 library(forcats)
