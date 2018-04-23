@@ -37,7 +37,7 @@ mh_ranking <- survey %>%
 
 ## How candidates ranked our program
 
-```{r, fig.cap="Where Respondants Ranked Us"}
+```{r, fig.cap="Where Respondents Ranked Us"}
 ggplot(mh_ranking, aes(x = ShortAnswer)) +
     geom_bar() +
     xlab("") +
