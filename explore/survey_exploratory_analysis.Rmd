@@ -10,12 +10,14 @@ output:
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = FALSE, warning = FALSE)
+options(knitr.table.format = "html")
 ```
 
 ```{r data, message=FALSE}
 library(tidyverse)
 library(readxl)
 library(themebg)
+library(kableExtra)
 
 survey <- read_excel("../data/raw/2018_survey_responses.xlsx") %>%
     mutate_at(
@@ -40,6 +42,34 @@ mh_ranking <- survey %>%
             "Did Not Rank"
         ), 
         ordered = TRUE
+    ) 
+
+rank_18_pct <- mh_ranking %>%
+    count(ShortAnswer) %>%
+    mutate(
+        year = 2018,
+        pct = n / nrow(group) * 100
+    )
+
+rank_2017 <- read_excel("../data/raw/2017_survey_responses.xlsx") %>%
+    filter(Question == 5) %>%
+    mutate_at(
+        "ShortAnswer", 
+        factor,
+        levels = c(
+            "First Choice", 
+            "Second Choice",
+            "Third Choice or Below",
+            "Did Not Rank"
+        ), 
+        ordered = TRUE
+    ) 
+
+rank_17_pct <- rank_2017 %>%
+    count(ShortAnswer) %>%
+    mutate(
+        year = 2017,
+        pct = n / nrow(rank_2017) * 100
     )
 
 ```
@@ -47,17 +77,21 @@ mh_ranking <- survey %>%
 ## How candidates ranked our program
 
 ```{r, fig.cap="Where Respondants Ranked Us"}
-ggplot(mh_ranking, aes(x = ShortAnswer)) +
-    geom_bar() +
+rank_18_pct %>%
+    bind_rows(rank_17_pct) %>%
+    mutate_at("year", factor, levels = c("2018", "2017")) %>%
+    ggplot(aes(x = ShortAnswer, y = pct)) +
+    geom_bar(aes(fill = year), stat = "identity", position = "dodge") +
     xlab(NULL) +
-    ylab("Number of Responses") +
+    ylab("Rankings (%)") +
+    scale_fill_brewer("Year", palette = "Set1") +
     theme_bg(xticks = FALSE)
 ```
 
 ## Reasons why we were not first choice
 
 ```{r}
-survey %>%
+x <- survey %>%
     filter(
         Question == 5, 
         !is.na(OriginalResponse)
@@ -72,9 +106,14 @@ survey %>%
         Comments = OriginalResponse
     ) %>%
     arrange(Rating) %>%
-    knitr::kable("html", booktabs = TRUE) %>%
-    kableExtra::collapse_rows()
+    add_count(Rating)
 
+y <- distinct(x, Rating, n) 
+    
+x %>% 
+    select(Comments) %>%
+    knitr::kable(booktabs = TRUE) %>%
+    group_rows(index = set_names(y$n, y$Rating))
 ```
 
 ## Ratings for each component of your interview day
@@ -104,7 +143,7 @@ ratings %>%
 ## Most important factors when deciding what order to rank residency programs
 
 ```{r}
-survey %>%
+x <- survey %>%
     filter(
         Question == 2, 
         !is.na(OriginalResponse)
@@ -119,8 +158,14 @@ survey %>%
         Comments = OriginalResponse
     ) %>%
     arrange(Rating) %>%
-    knitr::kable("html", booktabs = TRUE) %>%
-    kableExtra::collapse_rows()
+    add_count(Rating)
+
+y <- distinct(x, Rating, n) 
+    
+x %>% 
+    select(Comments) %>%
+    knitr::kable(booktabs = TRUE) %>%
+    group_rows(index = set_names(y$n, y$Rating))
 ```
 
 ## Did they attend the happy hour
@@ -144,7 +189,7 @@ survey %>%
 ## Did the happy hour enhance the interview experience
 
 ```{r}
-survey %>%
+x <- survey %>%
     filter(
         Question == 7, 
         !is.na(OriginalResponse)
@@ -159,8 +204,14 @@ survey %>%
         Comments = OriginalResponse
     ) %>%
     arrange(Rating) %>%
-    knitr::kable("html", booktabs = TRUE) %>%
-    kableExtra::collapse_rows()
+    add_count(Rating)
+
+y <- distinct(x, Rating, n) 
+    
+x %>% 
+    select(Comments) %>%
+    knitr::kable(booktabs = TRUE) %>%
+    group_rows(index = set_names(y$n, y$Rating))
 ```
 
 ## How candidates first learned of our program
@@ -181,7 +232,7 @@ survey %>%
 ## Provide any suggestions to improve the interview process
 
 ```{r}
-survey %>%
+x <- survey %>%
     filter(
         Question == 8, 
         !is.na(OriginalResponse)
@@ -196,6 +247,12 @@ survey %>%
         Comments = OriginalResponse
     ) %>%
     arrange(Rating) %>%
-    knitr::kable("html", booktabs = TRUE) %>%
-    kableExtra::collapse_rows()
+    add_count(Rating)
+
+y <- distinct(x, Rating, n) 
+    
+x %>% 
+    select(Comments) %>%
+    knitr::kable(booktabs = TRUE) %>%
+    group_rows(index = set_names(y$n, y$Rating))
 ```
