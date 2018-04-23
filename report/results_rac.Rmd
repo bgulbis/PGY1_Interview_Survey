@@ -1,0 +1,285 @@
+---
+title: "PGY1 Candidate Survey for 2018-2019"
+author: "Brian Gulbis"
+date: '`r format(Sys.Date(), "%B %d, %Y")`'
+output: 
+  pdf_document: 
+    latex_engine: xelatex
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, warning = FALSE)
+options(knitr.table.format = "latex")
+```
+
+```{r data, message=FALSE}
+library(tidyverse)
+library(readxl)
+library(themebg)
+library(kableExtra)
+
+survey <- read_excel("../data/raw/2018_survey_responses.xlsx") %>%
+    mutate_at(
+        c("OriginalResponse", "ShortAnswer"), 
+        na_if, 
+        y = "NA"
+    ) 
+
+ratings <- read_excel("../data/raw/2018_interview_interactions.xlsx")
+
+group <- read_excel("../data/raw/2018_responder_group.xlsx")
+
+mh_ranking <- survey %>%
+    filter(Question == 4) %>%
+    mutate_at(
+        "ShortAnswer", 
+        factor,
+        levels = c(
+            "First Choice", 
+            "Second Choice",
+            "Third Choice or Below",
+            "Did Not Rank"
+        ), 
+        ordered = TRUE
+    ) 
+
+rank_18_pct <- mh_ranking %>%
+    count(ShortAnswer) %>%
+    mutate(
+        year = 2018,
+        pct = n / nrow(group) * 100
+    )
+
+rank_2017 <- read_excel("../data/raw/2017_survey_responses.xlsx") %>%
+    filter(Question == 5) %>%
+    mutate_at(
+        "ShortAnswer", 
+        factor,
+        levels = c(
+            "First Choice", 
+            "Second Choice",
+            "Third Choice or Below",
+            "Did Not Rank"
+        ), 
+        ordered = TRUE
+    ) 
+
+rank_17_pct <- rank_2017 %>%
+    count(ShortAnswer) %>%
+    mutate(
+        year = 2017,
+        pct = n / nrow(rank_2017) * 100
+    )
+
+```
+
+Survey response rate: `r round(nrow(mh_ranking) / 28 * 100, 0)`%
+
+```{r, fig.cap="Where respondants ranked us in 2018 compared with 2017", fig.height=3.5, fig.pos="H", out.extra=""}
+rank_18_pct %>%
+    bind_rows(rank_17_pct) %>%
+    mutate_at("year", factor, levels = c("2018", "2017")) %>%
+    ggplot(aes(x = ShortAnswer, y = pct)) +
+    geom_bar(aes(fill = year), stat = "identity", position = "dodge") +
+    xlab(NULL) +
+    ylab("Rankings (%)") +
+    scale_fill_brewer("Year", palette = "Set1") +
+    theme_bg(xticks = FALSE)
+```
+
+```{r}
+x <- survey %>%
+    filter(
+        Question == 5, 
+        !is.na(OriginalResponse)
+    ) %>%
+    select(-ShortAnswer) %>%
+    left_join(
+        mh_ranking[c("Responder", "ShortAnswer")], 
+        by = "Responder"
+    ) %>%
+    select(
+        Rating = ShortAnswer, 
+        Comments = OriginalResponse
+    ) %>%
+    arrange(Rating) %>%
+    add_count(Rating)
+
+y <- distinct(x, Rating, n) 
+    
+x %>% 
+    select(Comments) %>%
+    knitr::kable(
+        caption = "Reasons why we were not first choice",
+        booktabs = TRUE, 
+        longtable = TRUE
+    ) %>%
+    kable_styling(
+        full_width = TRUE,
+        latex_options = "HOLD_position"
+    ) %>%
+    column_spec(column = 1, width = "6in") %>%
+    group_rows(index = set_names(y$n, y$Rating))
+```
+
+```{r, fig.cap="How respondants rated each portion of the interview day", fig.height=6, fig.pos="H", out.extra=""}
+ratings %>%
+    ungroup() %>%
+    mutate_at(
+        "Attribute", 
+        str_replace_all,
+        pattern = "interactions", 
+        replacement = ""
+    ) %>%
+    mutate_at(
+        "Score", 
+        factor, 
+        levels = c(
+            "Excellent", 
+            "Above Average",
+            "Average", 
+            "Below Average"
+        ), 
+        ordered = TRUE
+    ) %>%
+    ggplot(aes(x = Score)) +
+    geom_bar() +
+    xlab("Rating") +
+    ylab("Number of Responses") +
+    facet_wrap(~ Attribute) +
+    coord_flip() +
+    theme_bg(yticks = FALSE)
+```
+
+```{r}
+x <- survey %>%
+    filter(
+        Question == 2, 
+        !is.na(OriginalResponse)
+    ) %>%
+    select(-ShortAnswer) %>%
+    left_join(
+        mh_ranking[c("Responder", "ShortAnswer")], 
+        by = "Responder"
+    ) %>%
+    select(
+        Rating = ShortAnswer,
+        Comments = OriginalResponse
+    ) %>%
+    arrange(Rating) %>%
+    add_count(Rating)
+
+y <- distinct(x, Rating, n) 
+    
+x %>% 
+    select(Comments) %>%
+    knitr::kable(
+        caption = "Most important factors when deciding what order to rank residency programs",
+        booktabs = TRUE, 
+        longtable = TRUE
+    ) %>%
+    kable_styling(
+        full_width = TRUE,
+        latex_options = "HOLD_position"
+    ) %>%
+    column_spec(column = 1, width = "6in") %>%
+    group_rows(index = set_names(y$n, y$Rating))
+```
+
+```{r, fig.cap="How many attended the happy hour", fig.height=3.5, fig.pos="H", out.extra=""}
+survey %>%
+    filter(
+        Question == 6,
+        !is.na(OriginalResponse)
+    ) %>%
+    ggplot(aes(x = OriginalResponse)) +
+    geom_bar() +
+    xlab(NULL) +
+    scale_y_continuous(
+        "Number of Respones", 
+        breaks = seq(0, 22, by = 2)
+    ) +
+    theme_bg(yticks = FALSE)
+```
+
+```{r}
+x <- survey %>%
+    filter(
+        Question == 7, 
+        !is.na(OriginalResponse)
+    ) %>%
+    select(-ShortAnswer) %>%
+    left_join(
+        mh_ranking[c("Responder", "ShortAnswer")], 
+        by = "Responder"
+    ) %>%
+    select(
+        Rating = ShortAnswer,
+        Comments = OriginalResponse
+    ) %>%
+    arrange(Rating) %>%
+    add_count(Rating)
+
+y <- distinct(x, Rating, n) 
+    
+x %>% 
+    select(Comments) %>%
+    knitr::kable(
+        caption = "Feedback on the happy hours",
+        booktabs = TRUE, 
+        longtable = TRUE
+    ) %>%
+    kable_styling(
+        full_width = TRUE,
+        latex_options = "HOLD_position"
+    ) %>%
+    column_spec(column = 1, width = "6in") %>%
+    group_rows(index = set_names(y$n, y$Rating))
+```
+
+```{r, fig.cap="How candidates learned of our program", fig.height=4.5, fig.pos="H", out.extra=""}
+survey %>%
+    filter(Question == 1, !is.na(ShortAnswer)) %>%
+    mutate_at("ShortAnswer", fct_infreq) %>%
+    ggplot(aes(x = ShortAnswer)) +
+    geom_bar() +
+    xlab(NULL) +
+    scale_y_continuous("Number of Respones", breaks = seq(0, 22, by = 2)) +
+    coord_flip() +
+    theme_bg(yticks = FALSE)
+```
+
+```{r}
+x <- survey %>%
+    filter(
+        Question == 8, 
+        !is.na(OriginalResponse)
+    ) %>%
+    select(-ShortAnswer) %>%
+    left_join(
+        mh_ranking[c("Responder", "ShortAnswer")], 
+        by = "Responder"
+    ) %>%
+    select(
+        Rating = ShortAnswer,
+        Comments = OriginalResponse
+    ) %>%
+    arrange(Rating) %>%
+    add_count(Rating)
+
+y <- distinct(x, Rating, n) 
+    
+x %>% 
+    select(Comments) %>%
+    knitr::kable(
+        caption = "Suggestions to improve the interview experience",
+        booktabs = TRUE, 
+        longtable = TRUE
+    ) %>%
+    kable_styling(
+        full_width = TRUE,
+        latex_options = "HOLD_position"
+    ) %>%
+    column_spec(column = 1, width = "6in") %>%
+    group_rows(index = set_names(y$n, y$Rating))
+```
