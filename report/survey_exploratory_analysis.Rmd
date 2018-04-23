@@ -1,0 +1,154 @@
+---
+title: "Analysis of PGY1 Interviews for 2017-2018"
+author: "Brian Gulbis"
+date: '`r format(Sys.Date(), "%B %d, %Y")`'
+output:
+  pdf_document: default
+  html_document:
+    code_folding: hide
+    fig_caption: yes
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, warning = FALSE)
+```
+
+```{r data, message=FALSE}
+library(tidyverse)
+library(readxl)
+library(stringr)
+library(forcats)
+library(themebg)
+library(pander)
+panderOptions('table.alignment.default', 'left')
+panderOptions('table.split.table', Inf)
+
+survey <- read_excel("../data/raw/2017_survey_responses.xlsx") %>%
+    dmap_at(c("OriginalResponse", "ShortAnswer"), na_if, y = "NA") %>%
+    dmap_at("OriginalResponse", str_replace_all, pattern = "Dr. Raduzycki", replacement = "one resident")
+ratings <- read_excel("../data/raw/2017_interview_interactions.xlsx")
+
+mh_ranking <- survey %>%
+    filter(Question == 5) %>%
+    dmap_at("ShortAnswer", ~ factor(.x, levels = c("First Choice", "Second Choice", "Third Choice or Below", "Did Not Rank"), ordered = TRUE))
+```
+
+## How candidates ranked our program
+
+```{r, fig.cap="Where Respondants Ranked Us"}
+ggplot(mh_ranking, aes(x = ShortAnswer)) +
+    geom_bar() +
+    xlab("") +
+    ylab("Number of Responses") +
+    theme_bg(xticks = FALSE)
+```
+
+## Reasons why we were not first choice
+
+```{r, results='asis'}
+x <- survey %>%
+    filter(Question == 6, !is.na(OriginalResponse)) %>%
+    select(-ShortAnswer) %>%
+    left_join(mh_ranking[c("Responder", "ShortAnswer")], by = "Responder") %>%
+    select(Rating = ShortAnswer, Comments = OriginalResponse) %>%
+    group_by(Rating) %>%
+    by_slice(map, as.list, .to = "Comments") 
+
+y <- flatten(x) %>%
+    flatten()
+y <- y[4:6]
+names(y) <- x$Rating
+pander(y)
+```
+
+## Ratings for each component of your interview day
+
+```{r, fig.width=8, fig.cap="How Respondants Rated Each Portion of Interview Day"}
+ratings %>%
+    dmap_at("Score", ~ factor(.x, levels = c("Excellent", "Above Average", "Average", "Below Average"), ordered = TRUE)) %>%
+    ggplot(aes(x = Score)) +
+    geom_bar() +
+    xlab("Rating") +
+    ylab("Number of Responses") +
+    facet_wrap(~ Attribute) +
+    coord_flip() +
+    theme_bg(yticks = FALSE)
+```
+
+```{r, eval=FALSE, fig.cap="Slope graph of ratings"}
+ratings %>%
+    dmap_at("Score", ~ factor(.x, levels = c("Excellent", "Above Average", "Average", "Below Average"), ordered = TRUE)) %>%
+    dmap_at("Responder", as.character) %>%
+    dmap_at("Responder", as_factor) %>%
+    ggplot(aes(x = as_factor(Attribute), y = Score, color = Responder)) +
+    geom_point() +
+    geom_line() +
+    xlab("Attribute") +
+    ylab("Rating") +
+    theme_bg()
+```
+
+## Most important factors when deciding what order to rank residency programs
+
+```{r, results='asis'}
+x <- survey %>%
+    filter(Question == 2, !is.na(OriginalResponse)) %>%
+    select(-ShortAnswer) %>%
+    left_join(mh_ranking[c("Responder", "ShortAnswer")], by = "Responder") %>%
+    select(Rating = ShortAnswer, Comments = OriginalResponse) %>%
+    group_by(Rating) %>%
+    by_slice(map, as.list, .to = "Comments") 
+
+y <- flatten(x) %>%
+    flatten()
+y <- y[5:8]
+names(y) <- x$Rating
+pander(y)
+```
+
+## Did the MMI influence the way you ranked our residency program
+
+```{r, fig.height=2.5, fig.cap="How use of MMI's influenced ranking decisions"}
+survey %>%
+    filter(Question == 4) %>%
+    ggplot(aes(x = ShortAnswer)) +
+    geom_bar() +
+    xlab("") +
+    ylab("Number of Respones") +
+    coord_flip() +
+    theme_bg(yticks = FALSE)
+```
+
+## How candidates first learned of our program
+
+```{r, fig.height=2.5, fig.cap="How candidates learned of our program"}
+survey %>%
+    filter(Question == 1, !is.na(ShortAnswer)) %>%
+    dmap_at("ShortAnswer", fct_infreq) %>%
+    ggplot(aes(x = ShortAnswer)) +
+    geom_bar() +
+    xlab("") +
+    ylab("Number of Respones") +
+    coord_flip() +
+    theme_bg(yticks = FALSE)
+```
+
+
+## Provide any suggestions to improve the interview process
+
+```{r}
+x <- survey %>%
+    filter(Question == 7, !is.na(OriginalResponse)) %>%
+    select(-ShortAnswer) %>%
+    left_join(mh_ranking[c("Responder", "ShortAnswer")], by = "Responder") %>%
+    select(Rating = ShortAnswer, Comments = OriginalResponse) %>%
+    group_by(Rating) %>%
+    by_slice(map, as.list, .to = "Comments") 
+
+y <- flatten(x) %>%
+    flatten()
+y <- y[5:8]
+names(y) <- x$Rating
+pander(y)
+# knitr::kable(caption = "Suggestions for improving the interview day")
+```
